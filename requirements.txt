@@ -1,0 +1,15 @@
+# pip-installable Python packages
+flask
+opencv-python
+pyyaml
+numpy
+apriltag
+
+# Notes: The following dependencies are ROS2 packages and are not typically
+# installed via pip; install them via your ROS2 package manager / rosdep:
+# - rclpy
+# - sensor_msgs
+# - cv_bridge
+# - apriltag_msgs (if provided in your ROS workspace)
+
+# Hardware/driver-specific packages like `lerobot` may need separate installation.
