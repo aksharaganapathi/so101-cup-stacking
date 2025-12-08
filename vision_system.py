@@ -3,7 +3,7 @@ import numpy as np
 import time
 import json
 import os
-from urdf_ik_fixed import (
+from utils.urdf_ik_fixed import (
     setup_robot_and_kinematics, go_to_xyz_with_ik,
     go_home, go_vision_pose, open_gripper, close_gripper,
     get_current_joint_vector, safe_shutdown, go_to_joint_pose
