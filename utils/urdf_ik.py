@@ -79,7 +79,14 @@ def go_home(robot: SO101Follower, duration: float = 3.0):
 
 
 def go_vision_pose(robot: SO101Follower, duration: float = 3.0):
-	VISION_JOINTS = {'shoulder_pan.pos': -2.10989010989011, 'shoulder_lift.pos': -56.043956043956044, 'elbow_flex.pos': 21.36263736263736, 'wrist_flex.pos': 99.56043956043956, 'wrist_roll.pos': -0.9230769230769231, 'gripper.pos': 60.0}
+	VISION_JOINTS = {
+		'shoulder_pan.pos': -2.10989010989011,
+		'shoulder_lift.pos': -56.043956043956044,
+		'elbow_flex.pos': 21.36263736263736,
+		'wrist_flex.pos': 99.56043956043956,
+		'wrist_roll.pos': -0.9230769230769231,
+		'gripper.pos': 60.0
+	}
 	print("=== Moving to VISION position ===")
 	go_to_joint_pose(robot, VISION_JOINTS, duration=duration)
 

@@ -10,7 +10,6 @@ class MJPEGCameraNode(Node):
     def __init__(self):
         super().__init__('mjpeg_camera_node')
 
-        # Params
         self.declare_parameter('stream_url', 'http://192.168.1.100:8090/video_feed')
         self.declare_parameter('camera_info_url', '/home/akshara/ros2_ws/src/my_camera.yaml')
 
@@ -21,7 +20,6 @@ class MJPEGCameraNode(Node):
             self.get_logger().error(f"Calibration file not found: {camera_info_url}")
             exit(1)
 
-        # Load camera calibration
         with open(camera_info_url, 'r') as f:
             calib = yaml.safe_load(f)
 
@@ -34,15 +32,12 @@ class MJPEGCameraNode(Node):
         self.camera_info.p = calib['projection_matrix']['data']
         self.camera_info.distortion_model = calib.get('distortion_model', 'plumb_bob')
 
-        # Publishers
         self.pub_image = self.create_publisher(Image, '/image_raw', 10)
         self.pub_info = self.create_publisher(CameraInfo, '/camera_info', 10)
 
-        # Video capture
         self.cap = cv2.VideoCapture(stream_url)
         self.bridge = CvBridge()
 
-        # Timer: 5 Hz
         self.create_timer(0.2, self.publish_frame)
 
         self.get_logger().info("✅ MJPEG camera node started, publishing synchronized Image + CameraInfo at 5 Hz")
@@ -55,16 +50,13 @@ class MJPEGCameraNode(Node):
 
         now = self.get_clock().now().to_msg()
 
-        # Image
         img_msg = self.bridge.cv2_to_imgmsg(frame, encoding='bgr8')
         img_msg.header.stamp = now
         img_msg.header.frame_id = 'camera_optical_frame'
 
-        # CameraInfo
         self.camera_info.header.stamp = now
         self.camera_info.header.frame_id = 'camera_optical_frame'
 
-        # Publish both
         self.pub_image.publish(img_msg)
         self.pub_info.publish(self.camera_info)
 

@@ -3,10 +3,10 @@ import numpy as np
 import time
 import json
 import os
-from utils.urdf_ik_fixed import (
+from utils.urdf_ik import (
     setup_robot_and_kinematics, go_to_xyz_with_ik,
     go_home, go_vision_pose, open_gripper, close_gripper,
-    get_current_joint_vector, safe_shutdown, go_to_joint_pose
+    get_current_joint_vector, safe_shutdown
 )
 
 class VisionSystem:
@@ -71,7 +71,7 @@ class VisionSystem:
         return True
     
     def update_regions(self):
-        """Update region definitions based on current image size (now just one pickup zone)."""
+        """Update region definitions based on current image size."""
         self.pickup_region_x_min = 0
         self.pickup_region_x_max = self.img_width
         self.pickup_region_y_min = 0
@@ -83,17 +83,17 @@ class VisionSystem:
             with open('pixel_calibration.json', 'r') as f:
                 data = json.load(f)
             self.pixels_per_meter = data['pixels_per_meter']
-            print(f"✓ Pixel calibration: {self.pixels_per_meter:.1f} px/m")
+            print(f"[INFO] Pixel calibration: {self.pixels_per_meter:.1f} px/m")
         else:
-            print("⚠️ Pixel calibration not found. Using default 1000 px/m")
+            print("[WARN] Pixel calibration not found. Using default 1000 px/m")
             self.pixels_per_meter = 1000.0
         
         if os.path.exists('camera_orientation.json'):
             with open('camera_orientation.json', 'r') as f:
                 self.orientation = json.load(f)
-            print(f"✓ Camera orientation loaded")
+            print(f"[INFO] Camera orientation loaded")
         else:
-            print("⚠️ Camera orientation not found. Using DEFAULT FOR YOUR ROBOT.")
+            print("[WARN] Camera orientation not found. Using DEFAULT FOR YOUR ROBOT.")
             self.orientation = {
                 'image_x_to_robot': 'y_negative',
                 'image_y_to_robot': 'x_positive',
@@ -159,9 +159,9 @@ class VisionSystem:
         return target_x, target_y
     
     def get_next_place_position(self):
-        """Get the next available place position (replaces get_next_stack_position)."""
+        """Get the next available place position."""
         if self.current_place_index >= len(self.place_positions):
-            print("⚠️ All place positions are full!")
+            print("[WARN] All place positions are full!")
             return None
         
         pos = self.place_positions[self.current_place_index]
@@ -171,15 +171,15 @@ class VisionSystem:
         return pos
     
     def mark_place_position_used(self):
-        """Mark current place position as used and move to next (replaces mark_stack_position_used)."""
+        """Mark current place position as used and move to next."""
         if self.current_place_index < len(self.place_positions):
             self.current_place_index += 1
-            print(f"✓ Place position #{self.current_place_index} marked as used")
+            print(f"[INFO] Place position #{self.current_place_index} marked as used")
     
     def reset_place_positions(self):
-        """Reset place positions for new session (replaces reset_stack_positions)."""
+        """Reset place positions for new session."""
         self.current_place_index = 0
-        print("✓ Place positions reset")
+        print("[INFO] Place positions reset")
     
     def detect_red_objects(self, frame, show_detection=True):
         """
@@ -286,7 +286,7 @@ class VisionSystem:
         if not ret:
             return None
         
-        print("✓ Camera stabilized")
+        print("[INFO] Camera stabilized")
         return frame
     
     def find_best_pickup_object(self, frame):
@@ -299,30 +299,29 @@ class VisionSystem:
         pickup_objects = [obj for obj in detected_objects if obj[4] == 'pickup']
         
         if not pickup_objects:
-            print("✗ No objects found in pickup zone")
+            print("[INFO] No objects found in pickup zone")
             return None
         
         best_object = pickup_objects[0]
         cX, cY, contour, area, location = best_object
         
-        print(f"\n✓ Selected object #{1} for picking:")
+        print(f"\n[INFO] Selected object #{1} for picking:")
         print(f"  Position: ({cX}, {cY})")
         print(f"  Area: {area:.0f} px")
         print(f"  Location: {location.upper()}")
         
         return (cX, cY, contour, area)
 
-def automated_pick_and_place():
+def automated_stacking():
     """
     Automated system that continuously picks items from the entire feed 
     and places them in a fixed sequence of place positions.
-    (This is the new function, renamed from automated_pick_and_stack)
     """
     robot, kin = None, None
     
     try:
         print("\n" + "="*60)
-        print("AUTOMATED PICK AND PLACE SYSTEM")
+        print("AUTOMATED PICK AND STACK SYSTEM")
         print("="*60)
         
         print("\nConnecting to robot...")
@@ -339,7 +338,6 @@ def automated_pick_and_place():
         GRASP_HEIGHT = TABLE_Z + 0.02
         
         PLACE_APPROACH_HEIGHT = TABLE_Z + 0.25
-        PLACE_PLACE_HEIGHT = TABLE_Z + 0.05
         
         print("\n" + "="*60)
         print("SYSTEM READY")
@@ -367,7 +365,7 @@ def automated_pick_and_place():
             print("\n2. Capturing image...")
             frame = vision.capture_stable_image(stabilization_time=2.0)
             if frame is None:
-                print("✗ Failed to capture image")
+                print("Failed to capture image")
                 break
             
             print("\n3. Looking for objects in pickup zone...")
@@ -387,7 +385,7 @@ def automated_pick_and_place():
             
             place_pos = vision.get_next_place_position()
             if place_pos is None:
-                print("\n✗ No more place positions available")
+                print("\n No more place positions available")
                 break
             
             print(f"\n" + "="*60)
@@ -442,13 +440,10 @@ def automated_pick_and_place():
                 
                 item_count += 1
                 
-                print(f"\n✓ Successfully placed item #{item_count}")
-                
-                print("\nPausing for 2 seconds before next item...")
-                time.sleep(2)
+                print(f"\nSuccessfully placed item #{item_count}")
                 
             except Exception as e:
-                print(f"\n✗ Error during pick and place: {e}")
+                print(f"\nError during pick and place: {e}")
                 import traceback
                 traceback.print_exc()
                 
@@ -612,96 +607,18 @@ def measure_pixels_per_meter_with_validation(robot=None, kin=None):
     
     return pixels_per_meter
 
-def manual_pick_and_place_with_validation():
-    """Manual pick and place with image validation."""
+def show_camera_feed(robot, kin):
+    """Show camera feed with zones, automatically moving to vision pose first."""
     
-    robot, kin = None, None
-    
-    try:
-        print("\n" + "="*60)
-        print("MANUAL PICK AND PLACE WITH VALIDATION")
-        print("="*60)
-        
-        print("\nConnecting to robot...")
-        robot, kin = setup_robot_and_kinematics()
-        
-        vision = VisionSystem(robot, kin, resolution='1080p')
-        
-        if not vision.setup_camera():
-            print("Failed to setup camera")
-            return
-        
-        TABLE_Z = 0.1331
-        APPROACH_HEIGHT = TABLE_Z + 0.2
-        GRASP_HEIGHT = TABLE_Z + 0.02
-        
-        while True:
-            print("\n" + "="*60)
-            print("MANUAL CONTROL MENU")
-            print("="*60)
-            print("1. Single pick and place")
-            print("2. Show camera feed")
-            print("3. Calibrate pixels per meter")
-            print("4. Go to vision pose")
-            print("5. Go home")
-            print("6. Run automated pick and place") 
-            print("7. Exit")
-            
-            choice = input("\nChoice (1-7): ").strip()
-            
-            if choice == '1':
-                execute_single_pick(robot, kin, vision, TABLE_Z, APPROACH_HEIGHT, GRASP_HEIGHT)
-            
-            elif choice == '2':
-                show_camera_feed(vision)
-            
-            elif choice == '3':
-                measure_pixels_per_meter_with_validation(robot, kin)
-                vision.load_calibration()
-            
-            elif choice == '4':
-                print("\nMoving to vision pose...")
-                go_vision_pose(robot, duration=3.0)
-            
-            elif choice == '5':
-                print("\nMoving home...")
-                go_home(robot, duration=2.0)
-            
-            elif choice == '6':
-                automated_pick_and_place() 
-                vision.reset_place_positions()
-            
-            elif choice == '7':
-                print("\nExiting...")
-                break
-            
-            else:
-                print("Invalid choice")
-    
-    except KeyboardInterrupt:
-        print("\n\nInterrupted")
-    
-    except Exception as e:
-        print(f"\nError: {e}")
-        import traceback
-        traceback.print_exc()
-    
-    finally:
-        print("\nCleaning up...")
-        cv2.destroyAllWindows()
-        if robot:
-            try:
-                go_home(robot, duration=2.0)
-            except:
-                pass
-            safe_shutdown(robot)
-        print("Done.")
+    print("\nMoving to Vision Pose...")
+    go_vision_pose(robot, duration=2.0)
+    time.sleep(1)
 
-def show_camera_feed(vision):
-    """Show camera feed with zones (now only a single pickup zone)."""
-    if vision.camera is None:
-        vision.setup_camera()
-    
+    vision = VisionSystem(robot, kin, resolution='1080p')
+    if not vision.setup_camera():
+        print("Failed to setup camera")
+        return
+
     print("\nShowing camera feed. Press 'q' to quit.")
     while True:
         ret, frame = vision.camera.read()
@@ -729,102 +646,31 @@ def show_camera_feed(vision):
             break
     
     cv2.destroyAllWindows()
-
-def execute_single_pick(robot, kin, vision, TABLE_Z, APPROACH_HEIGHT, GRASP_HEIGHT):
-    """Execute single manual pick and place."""
-    print("Moving to vision pose...")
-    go_vision_pose(robot, duration=1.0)
-    time.sleep(1)
-    
-    print("\nCapturing image with stabilization...")
-    frame = vision.capture_stable_image(stabilization_time=2.0)
-    if frame is None:
-        print("Failed to capture image")
-        return
-    
-    print("\nDetecting objects...")
-    object_data = vision.find_best_pickup_object(frame)
-    
-    if object_data is None:
-        print("No suitable object found")
-        return
-    
-    cX, cY, contour, area = object_data
-    
-    target_x, target_y = vision.get_robot_target_position(cX, cY)
-    
-    print(f"\nCalculated pick position: ({target_x:.3f}, {target_y:.3f})")
-    print("\nEnter place position:")
-    place_x = float(input(f"  Place X [0.1]: ") or 0.1)
-    place_y = float(input(f"  Place Y [-0.05]: ") or -0.05)
-    
-    try:
-        print("\n1. Moving to home...")
-        go_home(robot, duration=2.0)
-        
-        print(f"2. Approaching object...")
-        go_to_xyz_with_ik(robot, kin, target_x, target_y, APPROACH_HEIGHT, duration=1.0)
-        
-        print("3. Opening gripper...")
-        open_gripper(robot, 60.0)
-        time.sleep(0.5)
-        
-        print("4. Moving to grasp height...")
-        go_to_xyz_with_ik(robot, kin, target_x, target_y, GRASP_HEIGHT, duration=1.0)
-        
-        print("5. Closing gripper...")
-        close_gripper(robot, 20.0)
-        time.sleep(0.5)
-        
-        print("6. Lifting...")
-        go_to_xyz_with_ik(robot, kin, target_x, target_y, APPROACH_HEIGHT, duration=1.0)
-        
-        print(f"7. Moving to place position...")
-        go_to_xyz_with_ik(robot, kin, place_x, place_y, APPROACH_HEIGHT, duration=1.0)
-        
-        print("8. Moving to place height...")
-        go_to_xyz_with_ik(robot, kin, place_x, place_y, GRASP_HEIGHT, duration=1.0)
-        
-        print("9. Opening gripper...")
-        open_gripper(robot, 40.0)
-        time.sleep(0.5)
-        
-        print("10. Lifting...")
-        go_to_xyz_with_ik(robot, kin, place_x, place_y, APPROACH_HEIGHT, duration=1.0)
-        
-        print("11. Returning to home...")
-        go_home(robot, duration=1.0)
-        
-        print("\n✓ Pick and place complete!")
-        
-    except Exception as e:
-        print(f"\n✗ Error during execution: {e}")
-        import traceback
-        traceback.print_exc()
-        go_home(robot, duration=2.0)
+    print("Exiting camera feed...")
 
 def main():
     print("\n" + "="*60)
     print("AUTOMATED VISION PICK AND PLACE SYSTEM") 
     print("="*60)
     print("Features:")
-    print("• Automated picking from PICKUP ZONE (entire vision area)") 
-    print("• Automated placing in a fixed sequence of points") 
-    print("• Camera stabilization before capture")
-    print("• Returns to vision pose for accurate reference")
-    print("• Stops when no more objects in pickup zone or place positions run out")
-    
-    print("\n1. Run automated pick and place system") 
-    print("2. Manual control (for testing)")
-    print("3. Calibrate pixels per meter")
+    print("1. Automated Stacking (Pick & Place)")
+    print("2. Show Camera Feed (Moves to Vision Pose)")
+    print("3. Calibrate Pixels Per Meter")
     print("4. Exit")
     
     choice = input("\nChoice (1-4): ").strip()
     
     if choice == '1':
-        automated_pick_and_place() 
+        automated_stacking() 
+    
     elif choice == '2':
-        manual_pick_and_place_with_validation()
+        print("\nConnecting to robot for camera feed...")
+        robot, kin = setup_robot_and_kinematics()
+        try:
+            show_camera_feed(robot, kin)
+        finally:
+            safe_shutdown(robot)
+
     elif choice == '3':
         print("\nSetting up robot for calibration...")
         robot, kin = setup_robot_and_kinematics()
@@ -832,8 +678,10 @@ def main():
             measure_pixels_per_meter_with_validation(robot, kin)
         finally:
             safe_shutdown(robot)
+
     elif choice == '4':
         print("Exiting...")
+
     else:
         print("Invalid choice")
 

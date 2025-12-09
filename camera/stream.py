@@ -19,7 +19,6 @@ def gen_frames():
     while True:
         ret, frame = cap.read()
         if not ret:
-            # Check if resolution setting failed
             width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
             height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
             print(f"Error: Failed to read frame.")
@@ -56,7 +55,6 @@ if __name__ == "__main__":
     if not cap.isOpened():
         print(f"Error: Could not open camera at index {CAMERA_INDEX}")
     else:
-        # Check if the resolution was successfully set
         width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
         height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
         print(f"Attempting 1080p. Actual resolution: {width}x{height}")

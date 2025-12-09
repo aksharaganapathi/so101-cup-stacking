@@ -9,7 +9,7 @@ Team:
 
 ## Overview
 
-This repository contains an **Automated Vision-Based Pick and Place System** for a robotic arm. The system uses computer vision to detect objects, calculate pick positions, and execute coordinated pick-and-place operations.
+This repository contains an **Automated Vision-Based Pick and Place System** for the SO-101 robot arm. The system uses computer vision to detect objects, calculate pick positions, and execute coordinated pick-and-place operations.
 
 ### Key Components
 
