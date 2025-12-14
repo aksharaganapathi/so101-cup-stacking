@@ -15,9 +15,8 @@ def main():
     robot.connect()
     print("Connected.")
 
-    # --- TEACH MODE: torque OFF so you can hand-pose ---
     print("Disabling torque so you can move the arm by hand (support it!)")
-    robot.bus.disable_torque()  # <-- key line
+    robot.bus.disable_torque()
 
     waypoints = {}
     if OUT_FILE.exists():
@@ -56,7 +55,6 @@ Controls:
                 OUT_FILE.write_text(json.dumps(waypoints, indent=2))
                 print(f"Saved '{name}' \u2192 {OUT_FILE}\n")
     finally:
-        # Leave it safe: disable torque when exiting so you can reposition if needed
         robot.bus.disable_torque()
         robot.disconnect()
         print("Disconnected.")

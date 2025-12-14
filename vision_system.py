@@ -46,7 +46,6 @@ class VisionSystem:
         self.camera = None
         
     def setup_camera(self):
-        """Setup camera with 1080p resolution."""
         self.camera = cv2.VideoCapture(0)
         if not self.camera.isOpened():
             print("Failed to open camera")
@@ -71,14 +70,12 @@ class VisionSystem:
         return True
     
     def update_regions(self):
-        """Update region definitions based on current image size."""
         self.pickup_region_x_min = 0
         self.pickup_region_x_max = self.img_width
         self.pickup_region_y_min = 0
         self.pickup_region_y_max = self.img_height
     
     def load_calibration(self):
-        """Load pixel calibration and orientation."""
         if os.path.exists('pixel_calibration.json'):
             with open('pixel_calibration.json', 'r') as f:
                 data = json.load(f)
@@ -101,9 +98,6 @@ class VisionSystem:
             }
     
     def pixel_to_robot_offset(self, pixel_x, pixel_y):
-        """
-        Convert pixel coordinates to robot offset from camera center.
-        """
         offset_u = pixel_x - self.center_x
         offset_v = pixel_y - self.center_y
         
@@ -123,10 +117,6 @@ class VisionSystem:
         return robot_delta_x, robot_delta_y
     
     def check_object_location(self, pixel_x, pixel_y):
-        """
-        Check if object is in the pickup spot.
-        Returns: 'pickup' or 'other'
-        """
         if (self.pickup_region_x_min <= pixel_x <= self.pickup_region_x_max and
             self.pickup_region_y_min <= pixel_y <= self.pickup_region_y_max):
             return 'pickup'
@@ -134,10 +124,6 @@ class VisionSystem:
             return 'other'
     
     def get_robot_target_position(self, pixel_x, pixel_y):
-        """
-        Calculate robot target position from vision pose and pixel detection.
-        Assumes robot is at vision pose.
-        """
         if self.robot is None or self.kin is None:
             print("ERROR: Robot not connected")
             return None, None
@@ -159,7 +145,6 @@ class VisionSystem:
         return target_x, target_y
     
     def get_next_place_position(self):
-        """Get the next available place position."""
         if self.current_place_index >= len(self.place_positions):
             print("[WARN] All place positions are full!")
             return None
@@ -171,21 +156,15 @@ class VisionSystem:
         return pos
     
     def mark_place_position_used(self):
-        """Mark current place position as used and move to next."""
         if self.current_place_index < len(self.place_positions):
             self.current_place_index += 1
             print(f"[INFO] Place position #{self.current_place_index} marked as used")
     
     def reset_place_positions(self):
-        """Reset place positions for new session."""
         self.current_place_index = 0
         print("[INFO] Place positions reset")
     
     def detect_red_objects(self, frame, show_detection=True):
-        """
-        Detect all red objects in the image.
-        Returns list of (center_x, center_y, contour, area, location_type) for each object.
-        """
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         
         lower_red1 = np.array([0, 100, 100])
@@ -263,9 +242,6 @@ class VisionSystem:
         return detected_objects
     
     def capture_stable_image(self, stabilization_time=2.0):
-        """
-        Capture image with camera stabilization.
-        """
         if self.camera is None:
             if not self.setup_camera():
                 return None
@@ -290,10 +266,6 @@ class VisionSystem:
         return frame
     
     def find_best_pickup_object(self, frame):
-        """
-        Find the best object to pick (now, any detected object).
-        Returns (center_x, center_y, contour, area) or None.
-        """
         detected_objects = self.detect_red_objects(frame, show_detection=True)
         
         pickup_objects = [obj for obj in detected_objects if obj[4] == 'pickup']
@@ -313,10 +285,6 @@ class VisionSystem:
         return (cX, cY, contour, area)
 
 def automated_stacking():
-    """
-    Automated system that continuously picks items from the entire feed 
-    and places them in a fixed sequence of place positions.
-    """
     robot, kin = None, None
     
     try:
@@ -487,7 +455,6 @@ def automated_stacking():
         print("Done.")
 
 def measure_pixels_per_meter_with_validation(robot=None, kin=None):
-    """Interactive tool to measure pixels per meter WITH VALIDATION."""
     print("\n" + "="*60)
     print("PIXELS PER METER CALIBRATION WITH VALIDATION")
     print("="*60)
@@ -608,8 +575,6 @@ def measure_pixels_per_meter_with_validation(robot=None, kin=None):
     return pixels_per_meter
 
 def show_camera_feed(robot, kin):
-    """Show camera feed with zones, automatically moving to vision pose first."""
-    
     print("\nMoving to Vision Pose...")
     go_vision_pose(robot, duration=2.0)
     time.sleep(1)
